@@ -1,0 +1,14 @@
+{
+  "name": "oukekonmange",
+  "version": "0.0.1",
+  "description": "Création automatique de sondages dans slack pour savoir où manger entre collègues",
+  "main": "oukekonmange.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "alban giron",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "cron": "^1.1.0"
+  }
+}
