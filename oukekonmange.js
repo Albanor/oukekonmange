@@ -91,12 +91,18 @@ if (!debug) {
 	var createPollCronJob = new CronJob('00 15 10 * * 1-5', function() {
 
 			//Create poll
-			sendCommandRequest('/poll', 'create oukekonmangeTEST');
+			sendCommandRequest('/poll', 'create oukekonmange');
 
 			//TODO use a control workflow solution
 			setTimeout(function() { 
 				//add solutions
 				sendCommandRequest('/poll', 'add ' + choices);
+			}, 3000);
+
+			//TODO use a control workflow solution
+			setTimeout(function() { 
+				//add solutions
+				sendCommandRequest('/poll', 'publish');
 			}, 3000);
 
 
