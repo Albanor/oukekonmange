@@ -1,6 +1,7 @@
 # oukekonmange
 
 ##TODO
+- Improve slack api invocation
 - Improve error handling
 - Improve chain of command
 - Improve cron job creation
