@@ -1,6 +1,12 @@
 var https = require('https'),
 	CronJob = require('cron').CronJob;
 
+var cnst = {
+	debug: false,
+	choices: "Hanamura, Festins, Casa 57, Enjoy Sushi",
+	token: 'xoxp-15302977399-15387541457-25514325488-22699c5eb4'
+}
+
 function sendRequest(options, dataCallback) {
 	var req = https.request(options, function(res) {
 		console.log('STATUS:'+res.statusCode);
@@ -24,85 +30,54 @@ function sendRequest(options, dataCallback) {
 	req.end();
 }
 
-function getGETFormatRequest(params) {
+function getGETFormatRequest(args) {
 	var request = "?";
-	for (var key in params) {
-		request += key + "=" + params[key] + "&";
+	for (var key in args) {
+		request += key + "=" + args[key] + "&";
 	}
 	request = request.substring(0,request.length-1);
-	console.log(request);
 	return request;
 }
 
-function getRequestOptions(requestType, args) {
-	switch(requestType) {
-		case 'channelsList':
-			//https://slack.com/api/channels.list
-			var requestParams = {
-				'token': 'xoxp-15302977399-15387541457-25514325488-22699c5eb4'
-			};
-
-			return {
-				hostname: 'slack.com',
-				path: '/api/channels.list' + getGETFormatRequest(requestParams)
-			};
-
+function slack(slackAPIMethodName, args, dataCallback) {
+	switch(slackAPIMethodName) {
+		case 'channels.list':
+			args.token = cnst.token;
 			break;
-		case 'command':
-			var requestParams = {
-				'agent' : 'webapp',
-				'token': 'xoxp-15302977399-15387541457-25514325488-22699c5eb4',
-				'channel': 'C0RESEEU8',
-				'command': encodeURIComponent(args.command),
-				'text' : encodeURIComponent(args.text)
-			};
-
-			return {
-				hostname: 'slack.com',
-				path: '/api/chat.command' + getGETFormatRequest(requestParams)
-			};
-
+		case 'chat.command':
+			args.agent = 'webapp';
+			args.token = cnst.token;
+			args.channel = 'C0RESEEU8';
+			args.command = encodeURIComponent(args.command);
+			args.text = encodeURIComponent(args.text);
 			break;
 		default:
-			console.log('no request type provided');
-			return undefined;
+			console.log('no slack API method name provided');
 			break;
 	}
+	var requestOptions = {
+		hostname: 'slack.com',
+		path: '/api/' + slackAPIMethodName + getGETFormatRequest(args)
+	};
+	sendRequest(requestOptions, dataCallback);
 }
 
-function sendChannelsListRequest(callback){
-	var requestOptions = getRequestOptions('channelsList');
-	if (requestOptions) {
-		sendRequest(requestOptions, function(list) {
-			callback(list);
-		});
-	}
-}
-
-function sendCommandRequest(command, args){
-	var requestOptions = getRequestOptions('command', {command: command, text: args});
-	sendRequest(requestOptions);
-}
-
-var debug = false;
-var choices = "Hanamura, Festins, Casa 57, Enjoy Sushi";
-
-if (!debug) {
+if (!cnst.debug) {
 	var createPollCronJob = new CronJob('00 15 10 * * 1-5', function() {
 
 			//Create poll
-			sendCommandRequest('/poll', 'create oukekonmange');
+			slack('chat.command', {command: '/poll', text: 'create oukekonmange'});
 
 			//TODO use a control workflow solution
 			setTimeout(function() { 
 				//add solutions
-				sendCommandRequest('/poll', 'add ' + choices);
+				slack('chat.command', {command: '/poll', text: 'add' + cnst.choices});
 			}, 3000);
 
 			//TODO use a control workflow solution
 			setTimeout(function() { 
 				//add solutions
-				sendCommandRequest('/poll', 'publish');
+				slack('chat.command', {command: '/poll', text: 'publish'});
 			}, 3000);
 
 
@@ -118,12 +93,12 @@ if (!debug) {
 	var closePollCronJob = new CronJob('00 30 11 * * 1-5', function() {
 
 			//Close poll
-			sendCommandRequest('/poll','close');
+			slack('chat.command', {command: '/poll', text: 'close'});
 
 			//TODO use a control workflow solution
 			setTimeout(function() { 
 				//Delete poll
-				sendCommandRequest('/poll','delete');
+				slack('chat.command', {command: '/poll', text: 'delete'});
 			}, 3000);
 			
 		}, function () {
@@ -137,8 +112,5 @@ if (!debug) {
 	console.log('Jobs initialized');
 }
 else {
-	//Do nothing
-	sendChannelsListRequest(function(list){
-		console.log(list);
-	});
+	slack('chat.command', {command: '/poll', text: 'delete'});
 }
