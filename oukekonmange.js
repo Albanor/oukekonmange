@@ -71,7 +71,7 @@ if (!cnst.debug) {
 			//TODO use a control workflow solution
 			setTimeout(function() { 
 				//add solutions
-				slack('chat.command', {command: '/poll', text: 'add' + cnst.choices});
+				slack('chat.command', {command: '/poll', text: 'add ' + cnst.choices});
 			}, 3000);
 
 			//TODO use a control workflow solution
