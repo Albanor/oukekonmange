@@ -1,5 +1,6 @@
 var https = require('https'),
-	CronJob = require('cron').CronJob;
+	CronJob = require('cron').CronJob,
+	Q = require('q');
 
 var cnst = {
 	debug: false,
@@ -8,26 +9,32 @@ var cnst = {
 }
 
 function sendRequest(options, dataCallback) {
-	var req = https.request(options, function(res) {
-		console.log('STATUS:'+res.statusCode);
-		console.log('HEADERS: '+ JSON.stringify(res.headers));
-		res.setEncoding('utf8');
-		res.on('data', function(chunk) {
-			console.log('BODY: '+ chunk);
-			if (dataCallback) {
-				dataCallback(chunk);
-			}
+	return function() {
+		var deferred = Q.defer();
+		var req = https.request(options, function(res) {
+			console.log('STATUS:'+res.statusCode);
+			console.log('HEADERS: '+ JSON.stringify(res.headers));
+			res.setEncoding('utf8');
+			res.on('data', function(chunk) {
+				console.log('BODY: '+ chunk);
+				if (dataCallback) {
+					dataCallback(chunk);
+				}
+			});
+			res.on('end', function() {
+				console.log('No more data in response.');
+			})
+			deferred.resolve(res);
 		});
-		res.on('end', function() {
-			console.log('No more data in response.');
-		})
-	});
 
-	req.on('error', function(e) {
-		console.log('problem with request: '+ e.message);
-	});
+		req.on('error', function(e) {
+			console.log('problem with request: '+ e.message);
+			deferred.reject(e);
+		});
 
-	req.end();
+		req.end();
+		return deferred.promise;
+	}
 }
 
 function getGETFormatRequest(args) {
@@ -59,27 +66,20 @@ function slack(slackAPIMethodName, args, dataCallback) {
 		hostname: 'slack.com',
 		path: '/api/' + slackAPIMethodName + getGETFormatRequest(args)
 	};
-	sendRequest(requestOptions, dataCallback);
+
+	return sendRequest(requestOptions, dataCallback);
 }
 
 if (!cnst.debug) {
 	var createPollCronJob = new CronJob('00 15 10 * * 1-5', function() {
 
-			//Create poll
-			slack('chat.command', {command: '/poll', text: 'create oukekonmange'});
+			//Defining functions to queue
+			var createPoll = slack('chat.command', {command: '/poll', text: 'create oukekonmange'});
+			var addChoices = slack('chat.command', {command: '/poll', text: 'add ' + cnst.choices});
+			var publishPoll = slack('chat.command', {command: '/poll', text: 'publish'});
 
-			//TODO use a control workflow solution
-			setTimeout(function() { 
-				//add solutions
-				slack('chat.command', {command: '/poll', text: 'add ' + cnst.choices});
-			}, 3000);
-
-			//TODO use a control workflow solution
-			setTimeout(function() { 
-				//add solutions
-				slack('chat.command', {command: '/poll', text: 'publish'});
-			}, 3000);
-
+			//Chaining calls
+			Q().then(createPoll).then(addChoices).then(publishPoll);
 
 		}, function () {
 			/* This function is executed when the job stops */
@@ -92,14 +92,13 @@ if (!cnst.debug) {
 	//Trigger close cron job
 	var closePollCronJob = new CronJob('00 30 11 * * 1-5', function() {
 
-			//Close poll
-			slack('chat.command', {command: '/poll', text: 'close'});
+			//Defining functions to queue
+			var closePoll = slack('chat.command', {command: '/poll', text: 'close'});
+			var deletePoll = slack('chat.command', {command: '/poll', text: 'delete'});
 
-			//TODO use a control workflow solution
-			setTimeout(function() { 
-				//Delete poll
-				slack('chat.command', {command: '/poll', text: 'delete'});
-			}, 3000);
+			//Chaining calls
+			Q().then(closePoll).then(deletePoll);
+
 			
 		}, function () {
 			/* This function is executed when the job stops */
@@ -112,5 +111,12 @@ if (!cnst.debug) {
 	console.log('Jobs initialized');
 }
 else {
-	slack('chat.command', {command: '/poll', text: 'delete'});
+
+	//Defining functions to queue
+	var createPoll = slack('chat.command', {command: '/poll', text: 'create oukekonmange'});
+	var addChoices = slack('chat.command', {command: '/poll', text: 'add ' + cnst.choices});
+	var publishPoll = slack('chat.command', {command: '/poll', text: 'publish'});
+	var closePoll = slack('chat.command', {command: '/poll', text: 'close'});
+	var deletePoll = slack('chat.command', {command: '/poll', text: 'delete'});
+	Q().then(createPoll).then(addChoices).then(publishPoll).then(closePoll).then(deletePoll);
 }

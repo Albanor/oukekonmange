@@ -9,6 +9,7 @@
   "author": "alban giron",
   "license": "UNLICENSED",
   "dependencies": {
-    "cron": "^1.1.0"
+    "cron": "^1.1.0",
+    "q": "^1.4.1"
   }
 }
